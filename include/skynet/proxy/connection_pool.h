@@ -1,4 +1,6 @@
 ﻿#pragma once
+#include <cstddef>
+#include <string>
 #include <memory>
 #include <queue>
 #include <mutex>

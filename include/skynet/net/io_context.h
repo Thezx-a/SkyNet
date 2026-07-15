@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <cstdint>
 #include <functional>
 #include <sys/epoll.h>
 #include <unordered_map>

@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include <coroutine>
+#include <cstdint>
+#include <cstddef>
 #include <deque>
 #include <functional>
 #include <unordered_map>
