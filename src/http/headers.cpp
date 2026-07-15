@@ -1,4 +1,6 @@
 ﻿#include "skynet/http/headers.h"
+#include <cctype>
+#include <algorithm>
 
 namespace skynet {
 namespace http {

@@ -42,10 +42,14 @@ add_library(skynet STATIC
     src/config/config.cpp
 )
 
+find_package(Threads REQUIRED)
+
 target_include_directories(skynet PUBLIC
-    /include
-    /src
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
 )
+
+target_link_libraries(skynet PUBLIC Threads::Threads)
 
 add_executable(skynet_gateway gateway/main.cpp)
 target_link_libraries(skynet_gateway PRIVATE skynet)

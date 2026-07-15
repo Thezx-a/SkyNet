@@ -19,7 +19,7 @@ public:
 private:
     int listen_fd_;
     IOContext* ctx_;
-    int client_fd_;
+    mutable int client_fd_;
     std::coroutine_handle<> handle_;
 };
 

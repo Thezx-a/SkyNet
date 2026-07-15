@@ -2,6 +2,7 @@
 #include <memory>
 #include <queue>
 #include <mutex>
+#include <unordered_map>
 #include "skynet/net/socket.h"
 #include "skynet/proxy/upstream.h"
 

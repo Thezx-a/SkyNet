@@ -1,6 +1,8 @@
 ﻿#include "skynet/net/resolver.h"
 #include <netdb.h>
 #include <cstring>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 
 namespace skynet {
 namespace net {

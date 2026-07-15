@@ -12,8 +12,8 @@ struct Upstream {
     std::string host;
     int port;
     int weight;
-    std::atomic<bool> healthy{true};
-    std::atomic<int> active_connections{0};
+bool healthy{true};
+    int active_connections{0};
 };
 
 class UpstreamManager {
