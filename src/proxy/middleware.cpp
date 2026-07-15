@@ -4,12 +4,12 @@ namespace proxy {
 
 void MiddlewareChain::add(Middleware mw) { chain_.push_back(std::move(mw)); }
 
-HttpResponse MiddlewareChain::process(const HttpRequest& req) {
+http::HttpResponse MiddlewareChain::process(const http::HttpRequest& req) {
     for (auto& mw : chain_) {
         auto resp = mw(req);
         if (resp.status_code >= 400) return resp;
     }
-    HttpResponse resp;
+    http::HttpResponse resp;
     resp.status_code = 200;
     return resp;
 }

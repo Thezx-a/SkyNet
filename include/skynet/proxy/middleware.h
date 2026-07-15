@@ -7,12 +7,12 @@
 namespace skynet {
 namespace proxy {
 
-using Middleware = std::function<HttpResponse(const HttpRequest&)>;
+using Middleware = std::function<http::HttpResponse(const http::HttpRequest&)>;
 
 class MiddlewareChain {
 public:
     void add(Middleware mw);
-    HttpResponse process(const HttpRequest& req);
+    http::HttpResponse process(const http::HttpRequest& req);
 
 private:
     std::vector<Middleware> chain_;
