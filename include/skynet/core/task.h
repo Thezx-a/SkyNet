@@ -10,6 +10,15 @@ namespace core {
 template <typename T = void>
 class Task {
 public:
+    struct final_awaiter {
+        std::coroutine_handle<> awaiter_;
+        bool await_ready() noexcept { return false; }
+        void await_suspend(std::coroutine_handle<>) noexcept {
+            if (awaiter_) awaiter_.resume();
+        }
+        void await_resume() noexcept {}
+    };
+
     struct promise_type {
         std::optional<T> result_;
         std::exception_ptr exception_;
@@ -19,7 +28,7 @@ public:
             return Task{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
         std::suspend_always initial_suspend() noexcept { return {}; }
-        std::suspend_always final_suspend() noexcept { return {}; }
+        final_awaiter final_suspend() noexcept { return {awaiter_}; }
         void return_value(T v) { result_ = std::move(v); }
         void unhandled_exception() { exception_ = std::current_exception(); }
     };
@@ -57,6 +66,15 @@ private:
 template <>
 class Task<void> {
 public:
+    struct final_awaiter {
+        std::coroutine_handle<> awaiter_;
+        bool await_ready() noexcept { return false; }
+        void await_suspend(std::coroutine_handle<>) noexcept {
+            if (awaiter_) awaiter_.resume();
+        }
+        void await_resume() noexcept {}
+    };
+
     struct promise_type {
         std::exception_ptr exception_;
         std::coroutine_handle<> awaiter_;
@@ -65,7 +83,7 @@ public:
             return Task{std::coroutine_handle<promise_type>::from_promise(*this)};
         }
         std::suspend_always initial_suspend() noexcept { return {}; }
-        std::suspend_always final_suspend() noexcept { return {}; }
+        final_awaiter final_suspend() noexcept { return {awaiter_}; }
         void return_void() {}
         void unhandled_exception() { exception_ = std::current_exception(); }
     };

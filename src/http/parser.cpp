@@ -27,11 +27,15 @@ ParseResult HttpParser::feed(const char* data, size_t len) {
                 state_ = State::kDone;
                 return ParseResult::kOk;
             } else {
+                buffer_.erase(0, pos);
                 return ParseResult::kNeedMoreData;
             }
         }
         size_t lineEnd = buffer_.find("\r\n", pos);
-        if (lineEnd == std::string::npos) return ParseResult::kNeedMoreData;
+        if (lineEnd == std::string::npos) {
+            buffer_.erase(0, pos);
+            return ParseResult::kNeedMoreData;
+        }
         std::string line = buffer_.substr(pos, lineEnd - pos);
         pos = lineEnd + 2;
 

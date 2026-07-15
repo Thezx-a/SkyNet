@@ -3,8 +3,12 @@
 using namespace skynet::core;
 
 TEST(TaskTest, SimpleReturn) {
-    auto coro = []() -> Task<int> { co_return 42; };
-    EXPECT_EQ(42, 1);  // Placeholder - full coroutine test requires Executor
+    auto inner = []() -> Task<int> { co_return 42; };
+    auto outer = [&]() -> Task<int> { co_return co_await inner(); };
+    auto task = outer();
+    task.handle().resume();
+    EXPECT_TRUE(task.handle().done());
+    EXPECT_EQ(*task.handle().promise().result_, 42);
 }
 
 TEST(TaskVoidTest, SimpleVoid) {

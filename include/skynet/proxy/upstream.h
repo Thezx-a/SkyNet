@@ -13,8 +13,8 @@ struct Upstream {
     std::string host;
     int port;
     int weight;
-bool healthy{true};
     int active_connections{0};
+    bool healthy{true};
 };
 
 class UpstreamManager {
