@@ -3,7 +3,7 @@
 #include <sys/epoll.h>
 #include <iostream>
 #include <unistd.h>
-#include <ctime>
+#include <chrono>
 
 namespace skynet {
 namespace core {
@@ -44,8 +44,8 @@ void Executor::addTimer(uint64_t timeout_ms, std::coroutine_handle<> coro) {
 
 void Executor::run() {
     running_ = true;
-    struct epoll_event events[kMaxEvents];
-    uint64_t last_time = 0;
+    using Clock = std::chrono::steady_clock;
+    auto last_time = Clock::now();
 
     while (running_) {
         // Process ready queue
@@ -56,8 +56,9 @@ void Executor::run() {
         }
 
         // Get elapsed time for timer wheel
-        uint64_t now = static_cast<uint64_t>(::time(nullptr) * 1000ULL);
-        if (last_time > 0) timer_wheel_->advance(now - last_time);
+        auto now = Clock::now();
+        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - last_time).count();
+        if (elapsed_ms > 0) timer_wheel_->advance(static_cast<uint64_t>(elapsed_ms));
         last_time = now;
 
         // Get expired timers

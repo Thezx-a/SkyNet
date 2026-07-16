@@ -32,6 +32,12 @@ void TimerWheel::advance(uint64_t elapsed_ms) {
 }
 
 std::vector<std::coroutine_handle<>> TimerWheel::getExpired() {
+    for (auto& bucket : wheel_) {
+        bucket.erase(std::remove_if(bucket.begin(), bucket.end(),
+            [this](const TimerEntry& e) {
+                return e.expire_tick <= current_tick_ || e.canceled;
+            }), bucket.end());
+    }
     std::vector<std::coroutine_handle<>> result;
     for (auto it = all_entries_.begin(); it != all_entries_.end();) {
         if (it->expire_tick <= current_tick_ || it->canceled) {
