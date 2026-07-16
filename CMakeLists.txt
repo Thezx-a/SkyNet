@@ -1,14 +1,6 @@
 ﻿cmake_minimum_required(VERSION 3.20)
 project(SkyNet VERSION 0.1.0 LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
-
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
-endif()
-
 option(ENABLE_TESTS "Enable unit tests" OFF)
 option(ENABLE_BENCHMARKS "Enable benchmarks" OFF)
 option(ENABLE_SANITIZERS "Enable sanitizers" OFF)
@@ -45,28 +37,31 @@ add_library(skynet STATIC
 find_package(Threads REQUIRED)
 
 target_include_directories(skynet PUBLIC
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/src
 )
 
 target_link_libraries(skynet PUBLIC Threads::Threads)
+target_compile_features(skynet PUBLIC cxx_std_20)
 
-add_executable(skynet_gateway gateway/main.cpp)
-target_link_libraries(skynet_gateway PRIVATE skynet)
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    add_executable(skynet_gateway gateway/main.cpp)
+    target_link_libraries(skynet_gateway PRIVATE skynet)
 
-add_subdirectory(examples)
+    add_subdirectory(examples)
 
-if(ENABLE_TESTS)
-    include(FetchContent)
-    FetchContent_Declare(googletest
-        GIT_REPOSITORY https://github.com/google/googletest.git
-        GIT_TAG v1.14.0
-    )
-    FetchContent_MakeAvailable(googletest)
-    enable_testing()
-    add_subdirectory(tests)
-endif()
+    if(ENABLE_TESTS)
+        include(FetchContent)
+        FetchContent_Declare(googletest
+            GIT_REPOSITORY https://github.com/google/googletest.git
+            GIT_TAG v1.14.0
+        )
+        FetchContent_MakeAvailable(googletest)
+        enable_testing()
+        add_subdirectory(tests)
+    endif()
 
-if(ENABLE_BENCHMARKS)
-    add_subdirectory(benches)
+    if(ENABLE_BENCHMARKS)
+        add_subdirectory(benches)
+    endif()
 endif()
