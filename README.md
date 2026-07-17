@@ -10,47 +10,115 @@
 
 <p align="center">
   <b>C++20 Coroutine Network Framework &amp; HTTP Reverse Proxy</b><br/>
-  <i>Zero-cost abstractions &bull; Event-driven &bull; Production-grade</i>
+  <i>Zero-cost abstractions · Event-driven · Production-grade</i>
 </p>
 
 ---
 
 ## Overview
 
-SkyNet is a **modern C++20 network framework** built on coroutines. It provides a high-level async I/O model where you write sequential-looking code that executes concurrently -- like Go's goroutines but with C++'s zero-cost abstractions.
+SkyNet is a **modern C++20 network framework** built on coroutines. It provides a high-level async I/O model where you write sequential-looking code that executes concurrently — like Go's goroutines but with C++'s zero-cost abstractions.
 
-```
-                        SkyNet Architecture
-+---------------------------------------------------+
-|                  Application Layer                |
-|              (HTTP Server / Reverse Proxy)        |
-+---------------------------------------------------+
-|              HTTP/1.1 Parser & Router             |
-+---------------------------------------------------+
-|         Coroutine Executor (Task Scheduler)       |
-+---------------------------------------------------+
-|         TCP Layer (Acceptor / TcpStream)          |
-+---------------------------------------------------+
-|           Epoll Event Loop (Linux)                |
-+---------------------------------------------------+
+### Architecture
+
+```mermaid
+graph TB
+    subgraph "Application"
+        GW[HTTP Server / Reverse Proxy]
+    end
+
+    subgraph "SkyNet Framework"
+        EXEC[Executor<br/>Task Scheduler]
+        PARSE[HTTP/1.1 Parser]
+        TIMER[TimerWheel<br/>Timeouts]
+        LB[LoadBalancer<br/>Upstream Selection]
+        HC[HealthChecker<br/>Periodic Probes]
+        POOL[ConnectionPool<br/>Reuse]
+    end
+
+    subgraph "Network Layer"
+        ACC[Acceptor<br/>Connection Accept]
+        TCP[TcpStream<br/>Bidirectional]
+        EP[Epoll Event Loop]
+    end
+
+    GW --> EXEC
+    GW --> PARSE
+    GW --> LB
+    LB --> HC
+    LB --> POOL
+    EXEC --> TIMER
+    EXEC --> ACC
+    ACC --> TCP
+    TCP --> EP
+
+    style EXEC fill:#e1f5fe
+    style EP fill:#e8f5e9
+    style LB fill:#fff3e0
 ```
 
 ---
 
-## Core Concepts
+## Coroutine Flow
 
-| Component | What It Does |
-|-----------|-------------|
-| **Task** | A coroutine that returns a value. The fundamental async unit. |
-| **Executor** | Schedules and runs tasks on an event loop. |
-| **TimerWheel** | Efficient timer management for timeouts and heartbeats. |
-| **Socket** | Coroutine-aware TCP socket with read/write await. |
-| **Acceptor** | Accepts incoming connections, produces TcpStream objects. |
-| **TcpStream** | Bidirectional coroutine TCP stream. |
-| **HTTP Parser** | Parses HTTP/1.1 requests and responses. |
-| **LoadBalancer** | Round-robin / least-connections upstream selection. |
-| **HealthChecker** | Periodic upstream health checks. |
-| **ConnectionPool** | Reuses backend connections for efficiency. |
+```mermaid
+sequenceDiagram
+    participant Client
+    participant Acceptor
+    participant Executor
+    participant Coroutine
+    participant Socket
+
+    Client->>Acceptor: TCP connect
+    Acceptor->>Executor: spawn(handle_connection)
+    
+    loop Event Loop
+        Executor->>Coroutine: resume()
+        Coroutine->>Socket: co_await read()
+        Note right of Coroutine: Suspends here
+        Socket-->>Executor: data ready
+        Executor->>Coroutine: resume()
+        Coroutine->>Socket: co_await write()
+        Note right of Coroutine: Suspends here
+        Socket-->>Executor: write complete
+        Executor->>Coroutine: resume()
+        Coroutine-->>Executor: co_return
+    end
+```
+
+---
+
+## Coroutine vs Thread
+
+```mermaid
+graph LR
+    subgraph "Thread Model (10K connections)"
+        T1[Thread 1] 
+        T2[Thread 2]
+        T3[...]
+        T10K[Thread 10K]
+        style T1 fill:#ffcdd2
+        style T10K fill:#ffcdd2
+    end
+
+    subgraph "SkyNet Model (10K connections)"
+        E1[1 Event Loop Thread]
+        C1[Coroutine 1<br/>~200B]
+        C2[Coroutine 2<br/>~200B]
+        C3[...<br/>~200B]
+        C10K[Coroutine 10K<br/>~200B]
+        style E1 fill:#c8e6c9
+        style C1 fill:#e8f5e9
+        style C10K fill:#e8f5e9
+    end
+```
+
+| | Thread-per-connection | SkyNet Coroutines |
+|---|---|---|
+| 10K connections | 10K threads (crash) | 1 thread (smooth) |
+| Memory per connection | ~1MB stack | ~200 bytes frame |
+| Context switch | OS kernel (expensive) | User-space (cheap) |
+| Blocking I/O | Thread stalls | Coroutine suspends |
 
 ---
 
@@ -76,8 +144,8 @@ ctest --test-dir build --output-on-failure
 #include <skynet/tcp_socket.h>
 
 skynet::Task<int> handle_client(skynet::TcpStream stream) {
-    auto data = co_await stream.read(1024);
-    co_await stream.write("Hello!\n");
+    auto data = co_await stream.read(1024);  // pause until data arrives
+    co_await stream.write("Hello!\n");       // pause until sent
     co_return 0;
 }
 
@@ -90,22 +158,52 @@ int main() {
 }
 ```
 
-### Coroutine vs Thread
-
-| | Thread-per-connection | SkyNet Coroutines |
-|---|---|---|
-| 10K connections | 10K threads (crash) | 1 thread (smooth) |
-| Memory per connection | ~1MB stack | ~200 bytes frame |
-| Context switch | OS kernel (expensive) | User-space (cheap) |
-| Blocking I/O | Thread stalls | Coroutine suspends |
-
 ---
 
-## Use as a Library
+## Component Map
 
-```cmake
-add_subdirectory(path/to/SkyNet)
-target_link_libraries(your_app skynet)
+```mermaid
+classDiagram
+    class Executor {
+        +run()
+        +spawn(Task)
+        +schedule()
+    }
+    
+    class Task~T~ {
+        -coroutine_handle
+        +resume()
+        +done()
+    }
+    
+    class Acceptor {
+        +accept() Task~TcpStream~
+        -socket
+    }
+    
+    class TcpStream {
+        +read(n) Task~bytes~
+        +write(data) Task
+        -fd
+    }
+    
+    class TimerWheel {
+        +add_timer(duration, cb)
+        +cancel_timer(id)
+        -ticks
+    }
+    
+    class LoadBalancer {
+        +select() Upstream
+        +add(Upstream)
+        +remove(Upstream)
+    }
+    
+    Executor --> Task
+    Executor --> Acceptor
+    Acceptor --> TcpStream
+    Executor --> TimerWheel
+    LoadBalancer --> TcpStream
 ```
 
 ---
@@ -138,14 +236,21 @@ SkyNet/
 
 ## Tests
 
-9 unit tests covering:
-
 | Module | Tests | What's Verified |
 |--------|-------|-----------------|
 | Task | 2 | Basic await, exception propagation |
 | Executor | 2 | Spawn, concurrent execution |
 | TimerWheel | 2 | Add/remove, expiry |
 | Upstream | 3 | Selection, health checks, removal |
+
+---
+
+## Use as a Library
+
+```cmake
+add_subdirectory(path/to/SkyNet)
+target_link_libraries(your_app skynet)
+```
 
 ---
 
